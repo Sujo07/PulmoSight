@@ -23,6 +23,12 @@ export default function Results() {
     }
   }, [scanId])
 
+  useEffect(() => {
+    if (scan && !scan.gradcam_image) {
+      setView('original')
+    }
+  }, [scan])
+
   async function downloadReport() {
     setDownloading(true)
     try {
@@ -84,10 +90,12 @@ export default function Results() {
 
       <div className="results-body">
         <div className="image-panel">
-          <div className="image-tabs">
-            <button className={view === 'gradcam' ? 'tab active' : 'tab'} onClick={() => setView('gradcam')}>Grad-CAM</button>
-            <button className={view === 'original' ? 'tab active' : 'tab'} onClick={() => setView('original')}>Original</button>
-          </div>
+          {scan.gradcam_image && (
+            <div className="image-tabs">
+              <button className={view === 'gradcam' ? 'tab active' : 'tab'} onClick={() => setView('gradcam')}>Grad-CAM</button>
+              <button className={view === 'original' ? 'tab active' : 'tab'} onClick={() => setView('original')}>Original</button>
+            </div>
+          )}
           <div className="image-frame">
             {view === 'gradcam' && scan.gradcam_image ? (
               <img src={imageUrl(scan.gradcam_image)} alt="Grad-CAM detection" className="scan-image"/>
