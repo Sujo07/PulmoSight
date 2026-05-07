@@ -21,13 +21,13 @@ export default function Layout() {
           <div className="nav-section-label">Navigation</div>
 
           <NavLink to="/upload" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">⬆</span> Upload Scan
+            Upload Scan
           </NavLink>
           <NavLink to="/history" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">📋</span> Patient History
+            Patient History
           </NavLink>
           <NavLink to="/reports" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-            <span className="nav-icon">📄</span> Reports
+            Reports
           </NavLink>
         </div>
 
