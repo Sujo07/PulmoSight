@@ -8,7 +8,13 @@ from routes.reports import reports_bp
 import os
 
 app = Flask(__name__)
-CORS(app, supports_credentials=True)
+CORS(app, origins=[
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+    "https://pulmo-sight-khaki.vercel.app"
+], supports_credentials=True)
 
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "pulmosight-dev-secret")
 app.config["UPLOAD_FOLDER"] = os.path.join(os.path.dirname(__file__), "uploads")
