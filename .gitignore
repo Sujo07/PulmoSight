@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+backend/pulmosight.db
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+
+# Local upload files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store

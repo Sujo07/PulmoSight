@@ -2,7 +2,7 @@ import { Outlet, NavLink } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function Layout() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
 
   return (
     <div className="layout">
@@ -17,17 +17,34 @@ export default function Layout() {
           <span className="logo-text">PulmoSight</span>
         </div>
 
-        <div className="nav-section-label">Navigation</div>
+        <div className="sidebar-menu">
+          <div className="nav-section-label">Navigation</div>
 
-        <NavLink to="/upload" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">⬆</span> Upload Scan
-        </NavLink>
-        <NavLink to="/history" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📋</span> Patient History
-        </NavLink>
-        <NavLink to="/reports" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📄</span> Reports
-        </NavLink>
+          <NavLink to="/upload" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-icon">⬆</span> Upload Scan
+          </NavLink>
+          <NavLink to="/history" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-icon">📋</span> Patient History
+          </NavLink>
+          <NavLink to="/reports" className={({isActive}) => `nav-item ${isActive ? 'active' : ''}`}>
+            <span className="nav-icon">📄</span> Reports
+          </NavLink>
+        </div>
+
+        {user && (
+          <div className="sidebar-footer">
+            <div className="user-profile">
+              <div className="avatar">{user.initials || 'DR'}</div>
+              <div className="user-info">
+                <span className="user-name">{user.name}</span>
+                <span className="user-role">{user.role}</span>
+              </div>
+            </div>
+            <button onClick={logout} className="logout-btn">
+              🚪 Logout
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main Content Layout */}
@@ -44,6 +61,16 @@ export default function Layout() {
               <span className="status-dot active"></span>
               <span className="status-text">Model Online (YOLOv11)</span>
             </div>
+            
+            {user && (
+              <div className="doctor-profile">
+                <div className="doctor-avatar">{user.initials || 'DR'}</div>
+                <div className="doctor-info">
+                  <span className="doctor-name">{user.name}</span>
+                  <span className="doctor-role">{user.role}</span>
+                </div>
+              </div>
+            )}
           </div>
         </header>
 
@@ -55,3 +82,4 @@ export default function Layout() {
     </div>
   )
 }
+
