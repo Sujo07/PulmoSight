@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
   ? 'http://localhost:5000/api'
-  : 'https://pulmosight-boh9.onrender.com/api';
+  : 'https://mdbasimali440-pulmosight-backend.hf.space/api';
 
 const api = axios.create({
   baseURL: API_BASE,
