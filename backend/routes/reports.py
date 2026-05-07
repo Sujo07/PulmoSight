@@ -79,8 +79,20 @@ def generate_report(scan_id):
         elements.append(Paragraph(f"Top Confidence Score: {scan['top_confidence']}%", styles["Normal"]))
         elements.append(Spacer(1, 0.4*cm))
 
-        for i, det in enumerate(scan.get("detections", []), 1):
-            elements.append(Paragraph(f"Detection {i}: {det['label']} — {det['confidence']}% confidence", styles["Normal"]))
+        if "images" in scan and len(scan["images"]) > 1:
+            elements.append(Paragraph("Detailed Detection Analysis across Slices:", ParagraphStyle("subsub", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=11, spaceAfter=6, textColor=colors.HexColor("#0d3b66"))))
+            for idx, img in enumerate(scan["images"], 1):
+                img_name = img.get("filename_original", f"Slice {idx}")
+                status = "POSITIVE" if img.get("is_positive") else "NEGATIVE"
+                conf = img.get("top_confidence", 0.0)
+                status_color = "red" if img.get("is_positive") else "green"
+                elements.append(Paragraph(f"Slice {idx} ({img_name}): <font color='{status_color}'><b>{status}</b></font> (Confidence: {conf}%)", styles["Normal"]))
+                for d in img.get("detections", []):
+                    elements.append(Paragraph(f"&nbsp;&nbsp;&nbsp;&nbsp;• Detected: <b>{d['label']}</b> with {d['confidence']}% confidence", styles["Normal"]))
+                elements.append(Spacer(1, 0.2*cm))
+        else:
+            for i, det in enumerate(scan.get("detections", []), 1):
+                elements.append(Paragraph(f"Detection {i}: {det['label']} — {det['confidence']}% confidence", styles["Normal"]))
 
         elements.append(Spacer(1, 0.8*cm))
         disclaimer_style = ParagraphStyle("disclaimer", parent=styles["Normal"], fontSize=9, textColor=colors.grey,

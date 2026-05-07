@@ -13,6 +13,7 @@ export default function Results() {
   const [loading, setLoading] = useState(!state?.scan)
   const [view, setView] = useState('gradcam')
   const [downloading, setDownloading] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(0)
 
   useEffect(() => {
     if (!scan) {
@@ -24,10 +25,16 @@ export default function Results() {
   }, [scanId])
 
   useEffect(() => {
-    if (scan && !scan.gradcam_image) {
-      setView('original')
+    if (scan) {
+      const hasMultipleImages = scan.images && scan.images.length > 0;
+      const currentImageData = hasMultipleImages ? scan.images[activeIdx] : scan;
+      if (currentImageData && !currentImageData.gradcam_image) {
+        setView('original')
+      } else {
+        setView('gradcam')
+      }
     }
-  }, [scan])
+  }, [scan, activeIdx])
 
   async function downloadReport() {
     setDownloading(true)
@@ -51,6 +58,9 @@ export default function Results() {
 
   const imageUrl = (filename) => `${API_BASE}/scan/image/${filename}`
 
+  const hasMultipleImages = scan.images && scan.images.length > 0;
+  const currentImageData = hasMultipleImages ? scan.images[activeIdx] : scan;
+
   return (
     <div className="page-container">
       <div className="results-header">
@@ -58,19 +68,27 @@ export default function Results() {
           <h1>Detection Results</h1>
           <p>Patient: <strong>{scan.patient_name}</strong> &nbsp;|&nbsp; Scan ID: <strong>{scan.scan_id}</strong></p>
         </div>
-        <button className="download-btn" onClick={downloadReport} disabled={downloading}>
-          {downloading ? 'Generating...' : '↓ Download Report'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {hasMultipleImages && (
+            <div className="image-tabs" style={{ background: '#E2E8F0', padding: '4px', borderRadius: 'var(--radius-sm)', display: 'flex' }}>
+              <button className={view === 'gradcam' ? 'tab active' : 'tab'} onClick={() => setView('gradcam')}>Grad-CAM</button>
+              <button className={view === 'original' ? 'tab active' : 'tab'} onClick={() => setView('original')}>Original</button>
+            </div>
+          )}
+          <button className="download-btn" onClick={downloadReport} disabled={downloading}>
+            {downloading ? 'Generating...' : '↓ Download Report'}
+          </button>
+        </div>
       </div>
 
       <div className="stats-row">
         <div className={`stat-card ${scan.is_positive ? 'danger' : 'success'}`}>
-          <div className="stat-label">Detection</div>
+          <div className="stat-label">Overall Patient Detection</div>
           <div className="stat-value">{scan.is_positive ? 'POSITIVE' : 'NEGATIVE'}</div>
-          <div className="stat-sub">{scan.detections[0]?.label || 'No detections'}</div>
+          <div className="stat-sub">{scan.is_positive ? 'Cancer detected in slices' : 'No cancer detected'}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Confidence</div>
+          <div className="stat-label">Max Confidence</div>
           <div className="stat-value warn">{scan.top_confidence}%</div>
           <div className="confidence-bar">
             <div className="confidence-fill" style={{width: `${scan.top_confidence}%`}}></div>
@@ -84,65 +102,112 @@ export default function Results() {
         <div className="stat-card">
           <div className="stat-label">Scan Date</div>
           <div className="stat-value-sm">{scan.timestamp?.slice(0,10)}</div>
-          <div className="stat-sub">{scan.scan_type}</div>
+          <div className="stat-sub">{scan.scan_type} ({hasMultipleImages ? `${scan.images.length} slices` : '1 image'})</div>
         </div>
       </div>
 
-      <div className="results-body">
-        <div className="image-panel">
-          {scan.gradcam_image && (
-            <div className="image-tabs">
-              <button className={view === 'gradcam' ? 'tab active' : 'tab'} onClick={() => setView('gradcam')}>Grad-CAM</button>
-              <button className={view === 'original' ? 'tab active' : 'tab'} onClick={() => setView('original')}>Original</button>
+      {hasMultipleImages ? (
+        <div className="results-grid-view">
+          {scan.images.map((img, idx) => (
+            <div key={idx} className="slice-result-card glass-card">
+              <div className="slice-card-header">
+                <h3>Slice {idx + 1}</h3>
+                <span className={`badge ${img.is_positive ? 'badge-danger' : 'badge-success'}`}>
+                  {img.is_positive ? 'Positive' : 'Negative'}
+                </span>
+              </div>
+              <div className="slice-card-body">
+                <div className="slice-image-frame">
+                  {view === 'gradcam' && img.gradcam_image ? (
+                    <img src={imageUrl(img.gradcam_image)} alt={`Slice ${idx + 1} Grad-CAM`} className="slice-scan-image" />
+                  ) : (
+                    <img src={imageUrl(img.original_image)} alt={`Slice ${idx + 1} Original`} className="slice-scan-image" />
+                  )}
+                  {img.detections?.[0] && (
+                    <div className="detection-badge">
+                      {img.detections[0].label} {img.detections[0].confidence}%
+                    </div>
+                  )}
+                </div>
+                <div className="slice-info-panel">
+                  <div className="slice-detections-list">
+                    <div className="slice-det-title">Detections ({img.detections?.length || 0})</div>
+                    {!img.detections || img.detections.length === 0 ? (
+                      <p className="muted-text" style={{ fontSize: '12px', margin: '8px 0' }}>No regions detected</p>
+                    ) : (
+                      img.detections.map((d, i) => (
+                        <div key={i} className="slice-det-row">
+                          <span>{d.label}</span>
+                          <span className="slice-det-conf">{d.confidence}%</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ marginTop: 'auto', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    <strong>Slice info:</strong> Confidence score of {img.top_confidence}% using YOLOv11 + Grad-CAM analysis.
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-          <div className="image-frame">
-            {view === 'gradcam' && scan.gradcam_image ? (
-              <img src={imageUrl(scan.gradcam_image)} alt="Grad-CAM detection" className="scan-image"/>
-            ) : view === 'original' && scan.original_image ? (
-              <img src={imageUrl(scan.original_image)} alt="Original CT scan" className="scan-image"/>
-            ) : (
-              <div className="no-image">Image not available</div>
-            )}
-            {scan.detections[0] && (
-              <div className="detection-badge">
-                {scan.detections[0].label} {scan.detections[0].confidence}%
+          ))}
+        </div>
+      ) : (
+        <div className="results-body">
+          <div className="image-panel">
+            {scan.gradcam_image && (
+              <div className="image-tabs">
+                <button className={view === 'gradcam' ? 'tab active' : 'tab'} onClick={() => setView('gradcam')}>Grad-CAM</button>
+                <button className={view === 'original' ? 'tab active' : 'tab'} onClick={() => setView('original')}>Original</button>
               </div>
             )}
-          </div>
-        </div>
-
-        <div className="detail-panel">
-          <div className="detail-card">
-            <div className="detail-title">Detections ({scan.detections.length})</div>
-            {scan.detections.length === 0 ? (
-              <p className="muted-text">No regions detected</p>
-            ) : (
-              scan.detections.map((d, i) => (
-                <div key={i} className="detection-row">
-                  <span>{d.label}</span>
-                  <span className="det-conf">{d.confidence}%</span>
+            <div className="image-frame">
+              {view === 'gradcam' && scan.gradcam_image ? (
+                <img src={imageUrl(scan.gradcam_image)} alt="Grad-CAM detection" className="scan-image"/>
+              ) : view === 'original' && scan.original_image ? (
+                <img src={imageUrl(scan.original_image)} alt="Original CT scan" className="scan-image"/>
+              ) : (
+                <div className="no-image">Image not available</div>
+              )}
+              {scan.detections?.[0] && (
+                <div className="detection-badge">
+                  {scan.detections[0].label} {scan.detections[0].confidence}%
                 </div>
-              ))
-            )}
-          </div>
-
-          <div className="detail-card">
-            <div className="detail-title">Scan Info</div>
-            <div className="info-table">
-              <div className="info-row"><span>Patient Age</span><span>{scan.patient_age}</span></div>
-              <div className="info-row"><span>Scan Type</span><span>{scan.scan_type}</span></div>
-              <div className="info-row"><span>Model</span><span>{scan.model_version}</span></div>
-              <div className="info-row"><span>Grad-CAM</span><span className="accent-text">Enabled</span></div>
+              )}
             </div>
           </div>
 
-          <div className="clinical-notice">
-            <div className="notice-title">Clinical Notice</div>
-            <p>AI-assisted result only. Further clinical evaluation and biopsy recommended before any diagnosis is made.</p>
+          <div className="detail-panel">
+            <div className="detail-card">
+              <div className="detail-title">Slice Detections ({scan.detections?.length || 0})</div>
+              {!scan.detections || scan.detections.length === 0 ? (
+                <p className="muted-text">No regions detected</p>
+              ) : (
+                scan.detections.map((d, i) => (
+                  <div key={i} className="detection-row">
+                    <span>{d.label}</span>
+                    <span className="det-conf">{d.confidence}%</span>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="detail-card">
+              <div className="detail-title">Scan Info</div>
+              <div className="info-table">
+                <div className="info-row"><span>Patient Age</span><span>{scan.patient_age}</span></div>
+                <div className="info-row"><span>Scan Type</span><span>{scan.scan_type}</span></div>
+                <div className="info-row"><span>Model</span><span>{scan.model_version}</span></div>
+                <div className="info-row"><span>Grad-CAM</span><span className="accent-text">Enabled</span></div>
+              </div>
+            </div>
+
+            <div className="clinical-notice">
+              <div className="notice-title">Clinical Notice</div>
+              <p>AI-assisted result only. Further clinical evaluation and biopsy recommended before any diagnosis is made.</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="results-footer">
         <Link to="/upload" className="new-scan-btn">+ New Scan</Link>

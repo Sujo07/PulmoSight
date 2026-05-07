@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../utils/api'
 
 export default function Upload() {
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
+  const [selectedFiles, setSelectedFiles] = useState([])
   const [dragging, setDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
@@ -12,39 +11,55 @@ export default function Upload() {
   const inputRef = useRef()
   const navigate = useNavigate()
 
-  function handleFile(f) {
-    if (!f) return
-    setFile(f)
+  function handleFiles(newFiles) {
+    if (!newFiles || newFiles.length === 0) return
     setError('')
-    if (f.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = e => setPreview(e.target.result)
-      reader.readAsDataURL(f)
-    } else {
-      setPreview(null)
+    
+    const updated = [...selectedFiles]
+    Array.from(newFiles).forEach(f => {
+      const previewUrl = f.type.startsWith('image/') ? URL.createObjectURL(f) : null
+      updated.push({
+        id: Math.random().toString(36).substr(2, 9),
+        file: f,
+        previewUrl: previewUrl
+      })
+    })
+    setSelectedFiles(updated)
+  }
+
+  function removeFile(id) {
+    const item = selectedFiles.find(x => x.id === id)
+    if (item && item.previewUrl) {
+      URL.revokeObjectURL(item.previewUrl)
     }
+    setSelectedFiles(selectedFiles.filter(x => x.id !== id))
   }
 
   function onDrop(e) {
     e.preventDefault()
     setDragging(false)
-    handleFile(e.dataTransfer.files[0])
+    handleFiles(e.dataTransfer.files)
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
-    if (!file) { setError('Please select a CT scan image.'); return }
+    if (selectedFiles.length === 0) { setError('Please select at least one CT scan image.'); return }
     if (!form.patient_name) { setError('Patient name is required.'); return }
 
     setUploading(true)
     setError('')
     const fd = new FormData()
-    fd.append('file', file)
+    selectedFiles.forEach(item => {
+      fd.append('file', item.file)
+    })
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
 
     try {
       const res = await api.post('/scan/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      selectedFiles.forEach(item => {
+        if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
       })
       navigate(`/results/${res.data.scan_id}`, { state: { scan: res.data } })
     } catch (err) {
@@ -96,19 +111,38 @@ export default function Upload() {
         <div className="glass-card" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="card-label">CT Scan Upload Area</div>
           <div
-            className={`dropzone ${dragging ? 'dragging' : ''} ${file ? 'has-file' : ''}`}
+            className={`dropzone ${dragging ? 'dragging' : ''} ${selectedFiles.length > 0 ? 'has-file' : ''}`}
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            onClick={() => inputRef.current.click()}
+            onClick={(e) => {
+              if (e.target.closest('.remove-btn') || e.target.closest('.add-more-card')) return;
+              inputRef.current.click()
+            }}
             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.dcm"
-              style={{display:'none'}} onChange={e => handleFile(e.target.files[0])}/>
-            {preview ? (
-              <div className="preview-wrap">
-                <img src={preview} alt="Preview" className="scan-preview"/>
-                <div className="preview-name">{file.name}</div>
+            <input ref={inputRef} type="file" accept=".png,.jpg,.jpeg,.dcm" multiple
+              style={{display:'none'}} onChange={e => handleFiles(e.target.files)}/>
+            {selectedFiles.length > 0 ? (
+              <div className="preview-grid">
+                {selectedFiles.map(item => (
+                  <div key={item.id} className="preview-card" onClick={e => e.stopPropagation()}>
+                    <button type="button" className="remove-btn" onClick={() => removeFile(item.id)}>×</button>
+                    {item.previewUrl ? (
+                      <img src={item.previewUrl} alt={item.file.name} />
+                    ) : (
+                      <div className="file-icon-placeholder">📄</div>
+                    )}
+                    <div className="file-name" title={item.file.name}>{item.file.name}</div>
+                  </div>
+                ))}
+                <div className="add-more-card" onClick={(e) => { e.stopPropagation(); inputRef.current.click() }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" strokeWidth="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  <span className="add-more-text">Add More</span>
+                </div>
               </div>
             ) : (
               <div className="dropzone-inner">
@@ -119,8 +153,8 @@ export default function Upload() {
                     <line x1="12" y1="3" x2="12" y2="15"/>
                   </svg>
                 </div>
-                <div className="drop-title">{file ? file.name : 'Drag & Drop CT Scan Here'}</div>
-                <div className="drop-sub">Supported formats: PNG, JPG, DICOM</div>
+                <div className="drop-title">Drag & Drop CT Scans Here</div>
+                <div className="drop-sub">Supported formats: PNG, JPG, DICOM | Select one or more images</div>
                 <div className="drop-btn">Browse Files</div>
               </div>
             )}
