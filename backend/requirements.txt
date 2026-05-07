@@ -3,10 +3,10 @@ flask-cors==4.0.1
 flask-jwt-extended==4.6.0
 werkzeug==3.0.3
 ultralytics==8.2.0
-opencv-python==4.10.0.82
+opencv-python-headless==4.10.0.82
 torch>=2.0.0
 torchvision>=0.15.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 Pillow>=10.0.0
 reportlab==4.2.2
 python-dotenv==1.0.1
