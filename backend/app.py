@@ -23,6 +23,10 @@ app.register_blueprint(scan_bp, url_prefix="/api/scan")
 app.register_blueprint(patients_bp, url_prefix="/api/patients")
 app.register_blueprint(reports_bp, url_prefix="/api/reports")
 
+@app.route("/")
+def home():
+    return {"message": "PulmoSight Backend is running successfully!"}
+
 @app.route("/api/health")
 def health():
     return {"status": "ok", "model": "YOLOv11", "gradcam": True}
